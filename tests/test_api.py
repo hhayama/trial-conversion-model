@@ -14,12 +14,6 @@ VALID_TRIAL = {
     "device_type": "iOS",
 }
 
-
-# Written for you, as the worked example. The two below follow the same
-# shape: build a request, send it, state what should be true. Note that
-# this one checks the status key rather than the whole response body, so
-# that adding a field later does not fail a test that never meant to
-# promise anything about it.
 def test_health_returns_ok():
     response = client.get("/health")
     assert response.status_code == 200
@@ -27,15 +21,15 @@ def test_health_returns_ok():
 
 
 def test_predict_returns_a_probability_and_a_band():
-    # TODO: post VALID_TRIAL to /predict and assert three things: that the
-    # request succeeded, that the conversion probability sits between 0 and
-    # 1, and that the band is one of low, medium or high.
-    raise NotImplementedError
+    response = client.post("/predict", json=VALID_TRIAL)
+    conversion_probability = response.json()["conversion_probability"]
+    conversion_band = response.json()["conversion_band"]
+    assert response.status_code == 200
+    assert 0.0 <= conversion_probability <= 1.0
+    assert conversion_band in ["low", "med", "high"]
 
 
 def test_predict_rejects_a_request_missing_a_field():
-    # TODO: post VALID_TRIAL with one field taken out, and assert the
-    # service turns it down with a 422. It does that only because your
-    # schema declares the field required, so this test is what notices if
-    # that ever quietly changes.
-    raise NotImplementedError
+    invalid_trial = VALID_TRIAL.pop("sessions_day1")
+    response = client.post("/predict", json=invalid_trial)
+    assert response.status_code == 422

@@ -28,9 +28,9 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["sessions_3d"] = df[DAY_COLUMNS].sum(axis=1)
     df["active_days_3d"] = (df[DAY_COLUMNS] > 0).sum(axis=1)
-    df["day1_share"] = (df["sessions_day1"] / df["sessions_3d"]).fillna(0)
-    df["listen_share"] = (df["listen_sessions_3d"] / df["sessions_3d"]).fillna(0)
-    df["avg_session_minutes"] = (df["total_minutes_3d"] / df["sessions_3d"]).fillna(0)
+    df["day1_share"] = (df["sessions_day1"] / df["sessions_3d"]).fillna(0).infer_objects(copy=False)
+    df["listen_share"] = (df["listen_sessions_3d"] / df["sessions_3d"]).fillna(0).infer_objects(copy=False)
+    df["avg_session_minutes"] = (df["total_minutes_3d"] / df["sessions_3d"]).fillna(0).infer_objects(copy=False)
     return df
 
 

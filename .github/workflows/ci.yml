@@ -53,11 +53,11 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: <your-region>
+          AWS_DEFAULT_REGION: us-west-1
         run: >
           uv run --with boto3 python -c "import boto3;
           boto3.client('s3').download_file(
-          '<your-bucket-name>',
+          'trial-conversion-artifacts-hiroki',
           'models/model.json', 'models/model.json')"
 
       # The registry is where CI hands the image to the server. The
@@ -71,7 +71,7 @@ jobs:
 
       - name: Build and push the image
         run: |
-          IMAGE=ghcr.io/<your-github-username>/trial-conversion-model
+          IMAGE=ghcr.io/hhayama/trial-conversion-model
           docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
           docker push $IMAGE:latest
           docker push $IMAGE:${{ github.sha }}
@@ -91,6 +91,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo docker pull ghcr.io/<your-github-username>/trial-conversion-model:latest
+            sudo docker pull ghcr.io/hhayama/trial-conversion-model:latest
             sudo docker rm -f trial-conversion || true
-            sudo docker run -d --restart unless-stopped --name trial-conversion -p 8000:8000 ghcr.io/<your-github-username>/trial-conversion-model:latest
+            sudo docker run -d --restart unless-stopped --name trial-conversion -p 8000:8000 ghcr.io/hhayama/trial-conversion-model:latest
