@@ -1,5 +1,6 @@
 import os
-from datetime import datetime
+from datetime import UTC, datetime
+
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from dotenv import load_dotenv
@@ -12,7 +13,7 @@ S3_BASE_PREFIX = "mlflow-connection-test"  # Base folder in S3
 
 def test_s3_write():
     # 1. Generate current timestamp for path and file naming
-    now = datetime.now()
+    now = datetime.now(UTC)
     timestamp_folder = now.strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"test_{timestamp_folder}.txt"
     
@@ -45,7 +46,7 @@ def test_s3_write():
         print("Error: AWS credentials not found. Make sure your environment variables or AWS config are set.")
     except ClientError as e:
         print(f"S3 Error: {e.response['Error']['Message']} (Code: {e.response['Error']['Code']})")
-    except Exception as e:
+    except Exception as e: #noqa: BLE001
         print(f"Unexpected error: {e}")
         
     finally:

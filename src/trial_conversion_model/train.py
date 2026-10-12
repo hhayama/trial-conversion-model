@@ -1,10 +1,9 @@
 import json
-import mlflow
-import mlflow.xgboost 
-
-from dotenv import load_dotenv
 from pathlib import Path
 
+import mlflow
+import mlflow.xgboost
+from dotenv import load_dotenv
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
@@ -45,10 +44,7 @@ def train(model_dir: Path = MODEL_DIR) -> dict:
         # Train Model
         model = XGBClassifier(**PARAMS)
         model.fit(X_train, y_train)
-
-        # Log the model
-        model_info = mlflow.xgboost.log_model(xgb_model = model, name='trial_conversion_model')
-
+        
         # Predict on the test set and log auc 
         auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
         mlflow.log_metric('auc', auc)
