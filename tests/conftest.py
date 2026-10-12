@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
+
 import pytest
+
 
 # autouse=True means this runs automatically before any tests/imports happen
 @pytest.fixture(autouse=True, scope="session")
