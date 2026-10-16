@@ -41,8 +41,7 @@ jobs:
 
   publish:
     needs: ci
-    # TODO: every push runs the job above, but only one branch should ever
-    # publish an image. Add the condition that limits this job to main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,8 +80,7 @@ jobs:
 
   deploy:
     needs: publish
-    # TODO: same condition as the publish job. Deploying is the one thing
-    # that must never happen from a branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       # The same three commands a human runs for a manual deploy,
