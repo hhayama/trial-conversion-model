@@ -41,7 +41,7 @@ jobs:
 
   publish:
     needs: ci
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,7 +80,7 @@ jobs:
 
   deploy:
     needs: publish
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       # The same three commands a human runs for a manual deploy,
