@@ -1,7 +1,7 @@
 import logging
+from importlib.metadata import PackageNotFoundError, version
 
 import pandas as pd
-from importlib.metadata import PackageNotFoundError, version
 from fastapi import APIRouter
 
 from trial_conversion_model.api.schemas import PredictionRequest, PredictionResponse
