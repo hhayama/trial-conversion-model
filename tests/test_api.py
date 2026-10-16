@@ -30,6 +30,7 @@ def test_predict_returns_a_probability_and_a_band():
 
 
 def test_predict_rejects_a_request_missing_a_field():
-    invalid_trial = VALID_TRIAL.pop("sessions_day1")
+    invalid_trial = VALID_TRIAL.copy()
+    invalid_trial.pop("sessions_day1", None)
     response = client.post("/predict", json=invalid_trial)
     assert response.status_code == 422
