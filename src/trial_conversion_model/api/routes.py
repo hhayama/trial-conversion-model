@@ -7,12 +7,6 @@ from fastapi import APIRouter
 from trial_conversion_model.api.schemas import PredictionRequest, PredictionResponse
 from trial_conversion_model.predict import load_model, predict_proba
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-
 logger = logging.getLogger("prediction")
 router = APIRouter()
 
@@ -47,7 +41,10 @@ def predict(request: PredictionRequest) -> PredictionResponse:
     prediction_value = round(float(raw_prediction.iloc[0]), 4)
     band = to_band(prediction_value)
 
-    logger.info(f"{request_data} -> probability={prediction_value} band={band}")
+    logger.info(
+        "prediction",
+        extra={"request": request_data, "probability": prediction_value, "band": band},
+    )
 
     result = PredictionResponse(conversion_probability=prediction_value, conversion_band=band)
     return result
