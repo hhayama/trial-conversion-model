@@ -28,7 +28,7 @@ def setup_logging() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    # Only prediction events go to the JSONL file (not uvicorn/httpx noise).
+    # Only prediction events go to the JSONL file
     file_handler = logging.FileHandler(LOG_PATH)
     file_handler.setFormatter(JsonlFormatter())
     logging.getLogger("prediction").addHandler(file_handler)
