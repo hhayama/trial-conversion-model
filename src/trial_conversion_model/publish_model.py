@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # Configuration
-BUCKET_NAME = os.environ["BUCKET_NAME"]
+S3_BUCKET = os.environ["S3_BUCKET"]
 S3_MODEL_PATH = "models"  # model path and filename
 LOCAL_MODEL_PATH = 'models'
 MODEL_FILE_NAME = 'model.json'
@@ -22,12 +22,12 @@ def publish_model():
 
     # Try upload and 
     try:
-        print(f"Uploading to s3://{BUCKET_NAME}/{s3_key} ...")
-        s3_client.upload_file(local_file_path, BUCKET_NAME, s3_key)
+        print(f"Uploading to s3://{S3_BUCKET}/{s3_key} ...")
+        s3_client.upload_file(local_file_path, S3_BUCKET, s3_key)
         print("Upload successful!")
         
         # 4. Verify object existence in S3
-        response = s3_client.head_object(Bucket=BUCKET_NAME, Key=s3_key)
+        response = s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
         print(f"Verified object in S3 (Size: {response['ContentLength']} bytes)")
         
     except NoCredentialsError:
