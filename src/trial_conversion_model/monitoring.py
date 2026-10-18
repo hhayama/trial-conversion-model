@@ -9,7 +9,7 @@ from evidently import Report
 from evidently.presets import DataDriftPreset
 
 from trial_conversion_model.data import RAW_DATA
-from trial_conversion_model.features import add_features, FEATURES
+from trial_conversion_model.features import FEATURES, add_features
 
 # The convention the report is built with: the dataset counts as drifted
 # when at least half of the features have drifted individually.
