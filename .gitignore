@@ -27,3 +27,6 @@ mlartifacts/*
 
 # Logs
 logs/*
+
+# Monitoring
+monitoring/*

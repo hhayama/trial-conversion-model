@@ -14,12 +14,15 @@ def main() -> None:
         "s3", region_name="eu-north-1", config=Config(signature_version=UNSIGNED)
     )
     DEST.mkdir(parents=True, exist_ok=True)
+    pages = s3.get_paginator("list_objects_v2").paginate(Bucket=BUCKET, Prefix=PREFIX)
+    # Skip the "folder" placeholder key; ISO dates in file names sort chronologically
     keys = sorted(
         obj["Key"]
-        for obj in s3.list_objects_v2(Bucket=BUCKET, Prefix=PREFIX)["Contents"]
+        for page in pages
+        for obj in page.get("Contents", [])
+        if not obj["Key"].endswith("/")
     )
-    # ISO dates in the file names sort chronologically
-    for key in (keys[0], keys[-1]):
+    for key in keys:
         target = DEST / Path(key).name
         if target.exists():
             print(f"skip    {target}")
