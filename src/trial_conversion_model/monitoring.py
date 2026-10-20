@@ -4,6 +4,7 @@ from pathlib import Path
 
 import boto3
 import pandas as pd
+import requests
 from dotenv import load_dotenv
 from evidently import Report
 from evidently.presets import DataDriftPreset
@@ -70,3 +71,10 @@ def run_monitoring_pipeline(current: Path) -> dict:
     drift_result = run_drift_check(current=cur, reference=ref)
     report_results = publish_report(drift_result, current.stem)
     return report_results
+
+def alert(message: str) -> None:
+    webhook = os.environ.get("SLACK_WEBHOOK_URL")
+    if not webhook:
+        print("SLACK_WEBHOOK_URL not set; alert printed only")
+        return
+    requests.post(webhook, json={"text": message}, timeout=10)
