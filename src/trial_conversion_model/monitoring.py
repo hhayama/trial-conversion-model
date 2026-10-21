@@ -12,13 +12,26 @@ from evidently.presets import DataDriftPreset
 from trial_conversion_model.data import RAW_DATA
 from trial_conversion_model.features import FEATURES, add_features
 
+REPORT_DIR = Path("monitoring")
+# The reference sits in the bucket next to models/ and predictions/.
+REFERENCE_KEY = "data/trial_snapshot.csv"
+
 # The convention the report is built with: the dataset counts as drifted
 # when at least half of the features have drifted individually.
 DRIFT_SHARE = 0.5
-REPORT_DIR = Path("monitoring")
+
 
 def load_reference(path: Path = RAW_DATA) -> pd.DataFrame:
-    """The training extract is the reference: what normal looked like."""
+    """The training extract is the reference: what normal looked like.
+
+    The jobs image carries no data, so the first run on a fresh machine
+    fetches the extract from the bucket where it was published once;
+    later runs find it on disk.
+    """
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        s3 = boto3.client("s3")
+        s3.download_file(os.environ["S3_BUCKET"], REFERENCE_KEY, str(path))
     return pd.read_csv(path)
 
 def load_parquet(path: Path) -> pd.DataFrame:
@@ -31,12 +44,10 @@ def run_drift_check(current: pd.DataFrame, reference: pd.DataFrame) -> object:
     Labels for live trials are 11+ days away, so input drift is the
     earliest signal that the world has shifted under the model.
     """
-    reference["trial_started_at"] = pd.to_datetime(reference["trial_started_at"])
-    cur = add_features(current)
-    ref = add_features(reference)
-    report = Report([DataDriftPreset(drift_share=0.5)])
-    snapshot = report.run(reference_data=ref[FEATURES], current_data=cur[FEATURES])
-    return snapshot
+    ref = add_features(reference)[FEATURES]
+    cur = add_features(current)[FEATURES]
+    report = Report([DataDriftPreset(drift_share=DRIFT_SHARE)])
+    return report.run(reference_data=ref, current_data=cur)
 
 
 def drifted_share(snapshot: object) -> float:
@@ -51,8 +62,8 @@ def publish_report(snapshot: object, name: str) -> dict:
     """Write the report locally (HTML for eyes, JSON for machines) and to S3."""
     load_dotenv(override=True)
     REPORT_DIR.mkdir(exist_ok=True)
-    html_path = REPORT_DIR / f"drift_{name}.html"
-    json_path = REPORT_DIR / f"drift_{name}.json"
+    html_path = REPORT_DIR / f"{name}.html"
+    json_path = REPORT_DIR / f"{name}.json"
     snapshot.save_html(str(html_path))
     share = drifted_share(snapshot)
     json_path.write_text(

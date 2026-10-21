@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from trial_conversion_model.monitoring import run_monitoring_pipeline, alert
+from trial_conversion_model.monitoring import alert, run_monitoring_pipeline
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
