@@ -14,10 +14,10 @@ if __name__ == "__main__":
     load_dotenv(override=True)
     cohort_path = pull_newest_cohort()
     cohort = pd.read_parquet(cohort_path)
- 
+
     model = load_model()
-    cohort['prediction_prob'] = predict_proba(model, cohort)
-    scored = cohort.sort_values(by='prediction_prob')
+    cohort["prediction_prob"] = predict_proba(model, cohort)
+    scored = cohort.sort_values(by="prediction_prob")
 
     PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = (

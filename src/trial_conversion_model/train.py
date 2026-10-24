@@ -23,10 +23,11 @@ PARAMS = {
     "min_child_weight": 8,
     "subsample": 0.9,
     "colsample_bytree": 0.9,
-    "eval_metric": "auc", 
+    "eval_metric": "auc",
 }
 
-mlflow.set_experiment('trail-conversion-model')
+mlflow.set_experiment("trail-conversion-model")
+
 
 def train(model_dir: Path = MODEL_DIR) -> dict:
     """Train the trial conversion model from the processed training table."""
@@ -40,14 +41,14 @@ def train(model_dir: Path = MODEL_DIR) -> dict:
     with mlflow.start_run():
         # Log hyperparameters
         mlflow.log_params(PARAMS)
-        
+
         # Train Model
         model = XGBClassifier(**PARAMS)
         model.fit(X_train, y_train)
-        
-        # Predict on the test set and log auc 
+
+        # Predict on the test set and log auc
         auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
-        mlflow.log_metric('auc', auc)
+        mlflow.log_metric("auc", auc)
 
         mlflow.set_tag("MLBC - Week 3", "Setting up mlflow and testing it out")
 

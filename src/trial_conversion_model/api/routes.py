@@ -11,12 +11,13 @@ logger = logging.getLogger("prediction")
 router = APIRouter()
 
 try:
-  app_version = version("trial-conversion-model")
+    app_version = version("trial-conversion-model")
 except PackageNotFoundError:
-  app_version = "0.0.0"  # Fallback if something broke
+    app_version = "0.0.0"  # Fallback if something broke
 
 # Load the model once, when the service starts, not on every request.
 model = load_model()
+
 
 def to_band(probability: float) -> str:
     """Turn a raw probability into a label a human can act on."""
@@ -46,5 +47,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
         extra={"request": request_data, "probability": prediction_value, "band": band},
     )
 
-    result = PredictionResponse(conversion_probability=prediction_value, conversion_band=band)
+    result = PredictionResponse(
+        conversion_probability=prediction_value, conversion_band=band
+    )
     return result

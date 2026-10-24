@@ -17,7 +17,9 @@ class JsonlFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        entry.update({k: v for k, v in record.__dict__.items() if k not in _STANDARD_ATTRS})
+        entry.update(
+            {k: v for k, v in record.__dict__.items() if k not in _STANDARD_ATTRS}
+        )
         return json.dumps(entry, default=str)
 
 

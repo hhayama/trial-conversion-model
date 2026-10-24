@@ -34,9 +34,11 @@ def load_reference(path: Path = RAW_DATA) -> pd.DataFrame:
         s3.download_file(os.environ["S3_BUCKET"], REFERENCE_KEY, str(path))
     return pd.read_csv(path)
 
+
 def load_parquet(path: Path) -> pd.DataFrame:
     """Takes a parquet file and returns a Pandas DataFrame"""
     return pd.read_parquet(path)
+
 
 def run_drift_check(current: pd.DataFrame, reference: pd.DataFrame) -> object:
     """Compare current trials against the reference, feature by feature.
@@ -67,7 +69,9 @@ def publish_report(snapshot: object, name: str) -> dict:
     snapshot.save_html(str(html_path))
     share = drifted_share(snapshot)
     json_path.write_text(
-        json.dumps({"name": name, "drifted_share": share, "drift": share >= DRIFT_SHARE})
+        json.dumps(
+            {"name": name, "drifted_share": share, "drift": share >= DRIFT_SHARE}
+        )
     )
 
     bucket = os.environ["S3_BUCKET"]
@@ -76,12 +80,14 @@ def publish_report(snapshot: object, name: str) -> dict:
         s3.upload_file(str(path), bucket, f"monitoring/{path.name}")
     return {"drifted_share": share, "drift": share >= DRIFT_SHARE}
 
+
 def run_monitoring_pipeline(current: Path) -> dict:
     ref = load_reference()
     cur = load_parquet(current)
     drift_result = run_drift_check(current=cur, reference=ref)
     report_results = publish_report(drift_result, current.stem)
     return report_results
+
 
 def alert(message: str) -> None:
     webhook = os.environ.get("SLACK_WEBHOOK_URL")

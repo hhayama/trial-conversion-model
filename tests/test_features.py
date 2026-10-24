@@ -12,13 +12,14 @@ VALID_TRIAL = {
     "device_type": "iOS",
 }
 
+
 def test_zero_session_trial_gets_zero_shares_not_nan():
     zeroes_df = pd.DataFrame(VALID_TRIAL, index=[0])
     df = add_features(zeroes_df)
     print(df)
-    assert df.iloc[0]['day1_share'] == 0
-    assert df.iloc[0]['listen_share'] == 0
-    assert df.iloc[0]['avg_session_minutes'] == 0
+    assert df.iloc[0]["day1_share"] == 0
+    assert df.iloc[0]["listen_share"] == 0
+    assert df.iloc[0]["avg_session_minutes"] == 0
     # TODO: write this one yourself, in three steps:
     #   1. Build a one-row DataFrame for a trial with nothing in it: zero
     #      sessions on each of the three days, zero listen sessions, and
