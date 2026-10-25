@@ -24,7 +24,8 @@ This writes `data/01_raw/trial_snapshot.csv`. Training always runs from that fil
 
 - `MLFLOW_TRACKING_URI`: where the MLflow tracking server lives (defaults in `.env.example` to `http://127.0.0.1:5001`).
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`: AWS credentials.
-- `S3_BUCKET`: the bucket that holds the published model and the drift reports.
+- `S3_BUCKET`: the bucket that holds the published model, the scored cohorts, and the drift reports.
+- `SLACK_WEBHOOK_URL`: optional. Incoming-webhook URL for drift alerts; if unset, the alert is only printed.
 
 Check that your credentials and bucket work before relying on them:
 
@@ -132,6 +133,45 @@ curl -i -s -X POST localhost:8000/predict -H "Content-Type: application/json" -d
 HTTP/1.1 422 Unprocessable Entity
 ```
 
+## Batch scoring
+
+Besides the on-demand API, the newest day-3 cohort is scored in bulk once a day, so the growth team gets a ranked list of the trials least likely to convert:
+
+```
+uv run scripts/score.py
+```
+
+It downloads the newest cohort file from the public, read-only cohort bucket (no credentials needed for that step; see `cohorts.py`), scores every trial with `models/model.json`, and sorts the result with the least likely to convert first. The output goes to `data/04_predictions/scored_<date>.csv` and is uploaded to `s3://$S3_BUCKET/predictions/`, so `S3_BUCKET` and AWS credentials must be set. The probability column is `prediction_prob`. Catch-up runs after missed days just score the most recent cohort.
+
+### Backfilling history
+
+On a fresh bucket the dashboard has nothing to show. To seed it, run once:
+
+```
+uv run scripts/backfill.py
+```
+
+This writes 30 days of synthetic scored cohorts and clean drift verdicts to the bucket, replacing anything already there for those days. It is a one-time fill, not part of the system, and should never be scheduled.
+
+## Dashboard
+
+A Streamlit dashboard reads the scored cohorts (`predictions/`) and drift verdicts (`monitoring/`) from S3 and shows the last 30 days: daily prediction distribution (mean with p25–p75 and p10–p90 bands), drift share against the alert threshold, and the current conversion-probability distribution. It also reads `models/metrics.json` for the model's headline metric, so train (or download) a model first.
+
+```
+uv run streamlit run dashboard/app.py
+```
+
+It needs `S3_BUCKET` and AWS credentials in `.env`. Data is cached for 10 minutes. Streamlit is in the dev dependency group.
+
+## Scheduled jobs
+
+In production, two daily jobs run from cron on the EC2 host, each in a short-lived container started from the jobs image (`Dockerfile.jobs`):
+
+- `scripts/score.py`: batch scoring, as above.
+- `scripts/check_drift.py`: drift check on the newest cohort (see below).
+
+The jobs image holds code and the model but never data; `-v` mounts `/home/ubuntu/data` so the cohort pulled by the scoring run survives until the drift run. The exact `docker run` command is documented at the bottom of `Dockerfile.jobs`. CI builds and pushes the jobs image alongside the API image and pulls it onto the host on every deploy to `main`, so a pushed change takes effect in the next morning's run.
+
 ## Tests and CI
 
 ```
@@ -157,16 +197,21 @@ Then check a cohort:
 uv run scripts/check_drift.py data/01_raw/cohorts/<cohort file>.parquet
 ```
 
-It prints a one-line verdict, for example `OK: 12% of features drifted (<cohort file>.parquet)` or `DRIFT: 58% of features ...`. For each cohort it also writes `monitoring/drift_<cohort>.html` (the full report, for people) and `monitoring/drift_<cohort>.json` (the share and verdict, for machines), and uploads both to `s3://$S3_BUCKET/monitoring/`. Both the reference extract and S3 credentials are needed, so run `fetch_data.py` and set up `.env` first. Drift reports are not committed.
+With no argument it checks the newest cohort already in `data/01_raw/cohorts/`. It prints a one-line verdict, for example `OK: 12% of features drifted (<cohort file>.parquet)` or `DRIFT: 58% of features ...`. For each cohort it also writes `monitoring/drift_<cohort>.html` (the full report, for people) and `monitoring/drift_<cohort>.json` (the share and verdict, for machines), and uploads both to `s3://$S3_BUCKET/monitoring/`. Both the reference extract and S3 credentials are needed, so run `fetch_data.py` and set up `.env` first. Drift reports are not committed.
+
+When the verdict is `DRIFT`, the same message is also posted to Slack through `SLACK_WEBHOOK_URL` (see Configuration). `OK` verdicts are not posted.
 
 ## Layout
 
-- `src/trial_conversion_model/`: the package. `data.py` acquires the extract from the database and loads the pipeline's inputs; `features.py` derives the model features from the snapshot's base aggregates and writes the processed training table; `train.py` trains, evaluates, and saves the model; `predict.py` scores trials from their base aggregates; `publish_model.py` uploads the trained model to S3; `monitoring.py` runs the input drift check and publishes its report; `api/` is the FastAPI service (`main.py` builds the app, `routes.py` holds the endpoints, `schemas.py` defines the request and response shapes, `logging_config.py` sets up the prediction log).
-- `scripts/`: thin entry points that call into the package (`fetch_data.py` materializes the extract, `train.py` builds the training table and trains, `publish_model.py` pushes the model to S3, `fetch_cohorts.py` and `check_drift.py` run the drift workflow, `check_s3.py` and `testing_s3_connection.py` verify S3 access). Production runs these; the logic stays importable and testable in `src/`.
+- `src/trial_conversion_model/`: the package. `data.py` acquires the extract from the database and loads the pipeline's inputs; `features.py` derives the model features from the snapshot's base aggregates and writes the processed training table; `train.py` trains, evaluates, and saves the model; `predict.py` scores trials from their base aggregates; `publish_model.py` uploads the trained model to S3; `monitoring.py` runs the input drift check, publishes its report, and sends the Slack alert; `cohorts.py` pulls the newest day-3 cohort; `api/` is the FastAPI service (`main.py` builds the app, `routes.py` holds the endpoints, `schemas.py` defines the request and response shapes, `logging_config.py` sets up the prediction log).
+- `scripts/`: thin entry points that call into the package (`fetch_data.py` materializes the extract, `train.py` builds the training table and trains, `publish_model.py` pushes the model to S3, `fetch_cohorts.py` and `check_drift.py` run the drift workflow, `score.py` batch-scores the newest cohort, `backfill.py` seeds a month of history for the dashboard, `check_s3.py` and `testing_s3_connection.py` verify S3 access). Production runs these; the logic stays importable and testable in `src/`.
+- `dashboard/`: the Streamlit monitoring dashboard (`app.py`).
+- `Dockerfile`, `Dockerfile.jobs`: the API image and the scheduled-jobs image.
 - `notebooks/`: exploration only. Notebooks import from the package; no pipeline logic lives here.
 - `data/01_raw/`: the immutable extract as pulled from the database (never committed, never modified).
 - `data/02_interim/`: reserved for intermediate outputs in multi-step pipelines; this project goes straight from raw to processed, so it stays empty.
 - `data/03_processed/`: the model-ready training table written by the pipeline (never committed).
+- `data/04_predictions/`: scored cohorts written by `score.py` (never committed).
 - `models/`: trained model artifacts and metrics (not committed).
 - `tests/`: pytest suite for the features and the API.
 - `logs/`, `monitoring/`: prediction logs and drift reports written at runtime (not committed).
